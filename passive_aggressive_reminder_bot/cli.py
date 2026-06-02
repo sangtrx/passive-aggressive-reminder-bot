@@ -8,8 +8,24 @@ from datetime import datetime
 from pathlib import Path
 
 from .channels import format_for_channel
+from .constants import (
+    CHANNELS,
+    INTENT_TEMPLATES,
+    MSG_HISTORY_SAVED,
+    MSG_NO_HISTORY,
+    MSG_NO_PROFILES,
+    MSG_NO_REMINDERS_DUE,
+    MSG_NO_SCHEDULES,
+    MSG_PROFILE_NOT_FOUND,
+    MSG_PROFILE_NOT_FOUND_STDERR,
+    MSG_PROFILE_REMOVED,
+    MSG_PROFILE_SAVED,
+    MSG_REMINDER_SCHEDULED,
+    TAILS,
+)
 from .core import generate_reminder
-from .data import CHANNELS, INTENT_TEMPLATES, TAILS
+from .data import INTENT_TEMPLATES as DATA_INTENT_TEMPLATES
+from .data import TAILS as DATA_TAILS
 from .models import Profile, ReminderEvent, ReminderRequest, ScheduledReminder
 from .storage import (
     DEFAULT_DATA_PATH,
