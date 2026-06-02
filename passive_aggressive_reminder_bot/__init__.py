@@ -1,4 +1,4 @@
 from .core import generate_reminder
-from .models import ReminderRequest
+from .models import Profile, ReminderRequest
 
-__all__ = ["ReminderRequest", "generate_reminder"]
+__all__ = ["Profile", "ReminderRequest", "generate_reminder"]

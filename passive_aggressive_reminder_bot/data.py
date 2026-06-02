@@ -25,3 +25,28 @@ TAILS = {
         "This reminder has a loyalty punch card now.",
     ],
 }
+
+INTENT_TEMPLATES = {
+    "nudge": [
+        "Just a gentle reminder to {message}.",
+        "Quick reminder to {message}.",
+        "Tiny nudge to {message}.",
+    ],
+    "follow_up": [
+        "Following up on {message}.",
+        "Circling back about {message}.",
+        "Just checking in on {message}.",
+    ],
+    "deadline": [
+        "Heads-up: {message} is coming up.",
+        "Friendly note: {message} is due soon.",
+        "Flagging that {message} has a deadline approaching.",
+    ],
+    "check_in": [
+        "Checking in on {message}.",
+        "Any update on {message}?",
+        "Just making sure {message} is still on the radar.",
+    ],
+}
+
+CHANNELS = ("plain", "slack", "discord", "email")
