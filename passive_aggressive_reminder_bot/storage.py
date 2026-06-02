@@ -1,3 +1,5 @@
+"""Storage backends for profiles, history, and schedules (JSON and SQLite)."""
+
 from __future__ import annotations
 
 import json

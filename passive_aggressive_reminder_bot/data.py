@@ -1,3 +1,5 @@
+"""Reminder templates, sass levels, and supported channels."""
+
 TAILS = {
     1: [
         "Just a gentle nudge!",

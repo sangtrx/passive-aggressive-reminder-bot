@@ -1,3 +1,5 @@
+"""Core reminder generation logic."""
+
 from __future__ import annotations
 
 import random
@@ -7,6 +9,18 @@ from .models import Profile, ReminderRequest
 
 
 def generate_reminder(request: ReminderRequest, profile: Profile | None = None) -> str:
+    """Generate a reminder message based on the request and optional profile.
+    
+    Combines intent template, sass tail, and personalization elements to create
+    a unique reminder message. Respects the random seed for reproducibility.
+    
+    Args:
+        request: ReminderRequest containing message, spice, intent, seed, etc.
+        profile: Optional Profile for personalization (display name, signoff)
+        
+    Returns:
+        A formatted reminder message string
+    """
     rng = random.Random(request.seed)
     templates = INTENT_TEMPLATES.get(request.intent, INTENT_TEMPLATES["nudge"])
     base = rng.choice(templates).format(message=request.message)

@@ -1,3 +1,5 @@
+"""Command-line interface for the passive-aggressive reminder bot."""
+
 from __future__ import annotations
 
 import argparse
@@ -24,6 +26,7 @@ from .storage import (
 
 
 def parse_datetime(value: str) -> datetime:
+    """Parse an ISO format datetime string."""
     try:
         return datetime.fromisoformat(value)
     except ValueError as exc:

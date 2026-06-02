@@ -1,3 +1,5 @@
+"""Data models for reminder bot profiles, requests, events, and schedules."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -6,6 +8,15 @@ from datetime import datetime
 
 @dataclass(frozen=True)
 class Profile:
+    """Represents a user profile with personalization settings.
+    
+    Attributes:
+        name: Internal profile identifier (key)
+        display_name: Human-readable name for personalized greetings
+        pronouns: Pronouns for the profile owner (default: they/them)
+        signoff: Closing signature for reminders (default: Thanks)
+        default_spice: Default sass level for this profile (1-5, default: 2)
+    """
     name: str
     display_name: str
     pronouns: str
@@ -14,6 +25,7 @@ class Profile:
 
     @classmethod
     def from_dict(cls, name: str, data: dict) -> "Profile":
+        """Create a Profile from a dictionary (deserialization)."""
         display = data.get("display_name") or name.replace("_", " ").title()
         return cls(
             name=name,
@@ -34,6 +46,16 @@ class Profile:
 
 @dataclass(frozen=True)
 class ReminderRequest:
+    """Encapsulates parameters for generating a reminder.
+    
+    Attributes:
+        message: The reminder message content
+        spice: Sass level from 1 (gentle) to 5 (spicy)
+        seed: Optional random seed for reproducible output
+        intent: Type of reminder: nudge, follow_up, deadline, check_in
+        profile: Optional profile name for personalization
+        channel: Output format: plain, slack, discord, email
+    """
     message: str
     spice: int = 2
     seed: int | None = None
@@ -44,6 +66,16 @@ class ReminderRequest:
 
 @dataclass(frozen=True)
 class ReminderEvent:
+    """Represents a reminder that was sent (history record).
+    
+    Attributes:
+        timestamp: When the reminder was generated
+        message: The reminder message content
+        spice: Sass level that was used
+        intent: Type of reminder that was sent
+        channel: Output format that was used
+        profile: Profile name if personalized, None otherwise
+    """
     timestamp: datetime
     message: str
     spice: int
@@ -53,6 +85,7 @@ class ReminderEvent:
 
     @classmethod
     def from_dict(cls, data: dict) -> "ReminderEvent":
+        """Create a ReminderEvent from a dictionary (deserialization)."""
         raw_ts = data.get("timestamp")
         try:
             timestamp = datetime.fromisoformat(raw_ts) if raw_ts else datetime.now()
@@ -68,6 +101,8 @@ class ReminderEvent:
         )
 
     def to_dict(self) -> dict:
+        """Convert ReminderEvent to a dictionary for serialization."""
+        """Convert ReminderEvent to a dictionary for serialization."""
         return {
             "timestamp": self.timestamp.isoformat(timespec="seconds"),
             "message": self.message,
@@ -80,6 +115,19 @@ class ReminderEvent:
 
 @dataclass(frozen=True)
 class ScheduledReminder:
+    """Represents a reminder scheduled for future delivery.
+    
+    Attributes:
+        id: Unique identifier for the scheduled reminder
+        message: The reminder message content
+        spice: Sass level for the reminder
+        intent: Type of reminder
+        channel: Output format for delivery
+        profile: Profile name if personalized, None otherwise
+        due_at: When the reminder should be sent
+        created_at: When the reminder was scheduled
+        status: Current state (pending, sent)
+    """
     id: int
     message: str
     spice: int
@@ -92,6 +140,7 @@ class ScheduledReminder:
 
     @classmethod
     def from_dict(cls, data: dict) -> "ScheduledReminder":
+        """Create a ScheduledReminder from a dictionary (deserialization)."""
         def parse_dt(value: str | None) -> datetime:
             try:
                 return datetime.fromisoformat(value) if value else datetime.now()
