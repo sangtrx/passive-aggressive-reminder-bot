@@ -3,12 +3,12 @@
 import pytest
 from datetime import datetime
 from passive_aggressive_reminder_bot.validation import (
-    ValidationError,
     validate_spice,
     validate_profile_name,
     validate_message,
     validate_datetime,
 )
+from passive_aggressive_reminder_bot.exceptions import ValidationError
 
 
 class TestValidateSpice:

@@ -6,11 +6,7 @@ import re
 from datetime import datetime
 
 from .constants import MAX_SPICE, MIN_SPICE
-
-
-class ValidationError(ValueError):
-    """Raised when input validation fails."""
-    pass
+from .exceptions import ValidationError
 
 
 def validate_spice(spice: int) -> int:
