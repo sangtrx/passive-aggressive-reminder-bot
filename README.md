@@ -9,6 +9,9 @@ Generate reminders with a configurable spice level.
 - `python main.py remind "update the roadmap" --intent follow_up --channel slack`
 - `python main.py profile add alex --display-name "Alex" --signoff "Thanks, Alex"`
 - `python main.py profile list`
+- `python main.py schedule add "send the draft" --due 2026-06-03T09:00 --profile alex`
+- `python main.py schedule send`
+- `python main.py history --limit 5`
 
 ## Options
 
@@ -27,3 +30,19 @@ Generate reminders with a configurable spice level.
 - `profile add <name>` — Create/update a profile
 - `profile list` — Show saved profiles
 - `profile remove <name>` — Delete a profile
+
+### Scheduling
+
+- `schedule add <message>` — Create a scheduled reminder (`--due` required)
+- `schedule list` — List scheduled reminders (`--status pending|sent|all`)
+- `schedule due` — Show reminders that are due
+- `schedule send` — Dispatch due reminders (use `--dry-run` to preview)
+
+### History
+
+- `history` — Show the most recent reminder events
+
+### Storage
+
+Use `--data reminder_bot.db` to store profiles, schedules, and history in SQLite instead of
+JSON.

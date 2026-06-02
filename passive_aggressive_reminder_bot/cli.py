@@ -8,8 +8,26 @@ from pathlib import Path
 from .channels import format_for_channel
 from .core import generate_reminder
 from .data import CHANNELS, INTENT_TEMPLATES, TAILS
-from .models import Profile, ReminderEvent, ReminderRequest
-from .storage import DEFAULT_DATA_PATH, append_history, delete_profile, load_profiles, upsert_profile
+from .models import Profile, ReminderEvent, ReminderRequest, ScheduledReminder
+from .storage import (
+    DEFAULT_DATA_PATH,
+    add_schedule,
+    append_history,
+    delete_profile,
+    list_due_schedules,
+    list_history,
+    list_schedules,
+    load_profiles,
+    mark_schedule_sent,
+    upsert_profile,
+)
+
+
+def parse_datetime(value: str) -> datetime:
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("Datetime must be ISO format") from exc
 
 
 def build_parser() -> tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
@@ -84,13 +102,84 @@ def build_parser() -> tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
         help="Path to reminder data store",
     )
 
+    schedule_parser = subparsers.add_parser("schedule", help="Schedule reminders")
+    schedule_sub = schedule_parser.add_subparsers(dest="schedule_command", required=True)
+
+    schedule_add = schedule_sub.add_parser("add", help="Add a scheduled reminder")
+    schedule_add.add_argument("message", help="What the reminder is about")
+    schedule_add.add_argument("--due", type=parse_datetime, required=True)
+    schedule_add.add_argument(
+        "--spice",
+        type=int,
+        default=None,
+        choices=sorted(TAILS.keys()),
+    )
+    schedule_add.add_argument(
+        "--intent",
+        choices=sorted(INTENT_TEMPLATES.keys()),
+        default="nudge",
+    )
+    schedule_add.add_argument("--profile", help="Profile name to personalize")
+    schedule_add.add_argument(
+        "--channel",
+        choices=CHANNELS,
+        default="plain",
+    )
+    schedule_add.add_argument(
+        "--data",
+        type=Path,
+        default=DEFAULT_DATA_PATH,
+        help="Path to reminder data store",
+    )
+
+    schedule_list = schedule_sub.add_parser("list", help="List scheduled reminders")
+    schedule_list.add_argument(
+        "--status",
+        choices=("pending", "sent", "all"),
+        default="all",
+    )
+    schedule_list.add_argument(
+        "--data",
+        type=Path,
+        default=DEFAULT_DATA_PATH,
+        help="Path to reminder data store",
+    )
+
+    schedule_due = schedule_sub.add_parser("due", help="List due reminders")
+    schedule_due.add_argument("--now", type=parse_datetime)
+    schedule_due.add_argument(
+        "--data",
+        type=Path,
+        default=DEFAULT_DATA_PATH,
+        help="Path to reminder data store",
+    )
+
+    schedule_send = schedule_sub.add_parser("send", help="Send due reminders")
+    schedule_send.add_argument("--now", type=parse_datetime)
+    schedule_send.add_argument("--dry-run", action="store_true")
+    schedule_send.add_argument(
+        "--data",
+        type=Path,
+        default=DEFAULT_DATA_PATH,
+        help="Path to reminder data store",
+    )
+
+    history_parser = subparsers.add_parser("history", help="Show reminder history")
+    history_parser.add_argument("--limit", type=int, default=10)
+    history_parser.add_argument(
+        "--data",
+        type=Path,
+        default=DEFAULT_DATA_PATH,
+        help="Path to reminder data store",
+    )
+
     return parser, remind_parser
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser, remind_parser = build_parser()
     raw_argv = list(argv) if argv is not None else sys.argv[1:]
-    if raw_argv and raw_argv[0] not in {"remind", "profile"}:
+    if raw_argv and raw_argv[0] not in {"remind", "profile", "schedule", "history"}:
         args = remind_parser.parse_args(raw_argv)
         args.command = "remind"
         return args
@@ -136,11 +225,119 @@ def handle_profile_commands(args: argparse.Namespace) -> None:
             print(f"Profile '{args.name}' not found.")
 
 
+def handle_schedule_commands(args: argparse.Namespace) -> None:
+    data_path = args.data
+    profiles = load_profiles(data_path)
+
+    if args.schedule_command == "add":
+        profile = profiles.get(args.profile) if args.profile else None
+        spice = args.spice if args.spice is not None else (profile.default_spice if profile else 2)
+        schedule = ScheduledReminder(
+            id=0,
+            message=args.message,
+            spice=spice,
+            intent=args.intent,
+            channel=args.channel,
+            profile=profile.name if profile else None,
+            due_at=args.due,
+            created_at=datetime.now(),
+            status="pending",
+        )
+        saved = add_schedule(schedule, data_path)
+        print(
+            f"Scheduled reminder #{saved.id} for "
+            f"{saved.due_at.isoformat(timespec='minutes')}"
+        )
+        return
+
+    if args.schedule_command == "list":
+        status = None if args.status == "all" else args.status
+        schedules = list_schedules(data_path, status=status)
+        if not schedules:
+            print("No scheduled reminders found.")
+            return
+        for schedule in schedules:
+            profile_label = f" ({schedule.profile})" if schedule.profile else ""
+            print(
+                f"#{schedule.id} | {schedule.due_at.isoformat(timespec='minutes')} "
+                f"[{schedule.status}] {schedule.message}{profile_label}"
+            )
+        return
+
+    if args.schedule_command == "due":
+        now = args.now or datetime.now()
+        schedules = list_due_schedules(now, data_path)
+        if not schedules:
+            print("No reminders are due.")
+            return
+        for schedule in schedules:
+            profile_label = f" ({schedule.profile})" if schedule.profile else ""
+            print(
+                f"#{schedule.id} | {schedule.due_at.isoformat(timespec='minutes')} "
+                f"{schedule.message}{profile_label}"
+            )
+        return
+
+    if args.schedule_command == "send":
+        now = args.now or datetime.now()
+        schedules = list_due_schedules(now, data_path)
+        if not schedules:
+            print("No reminders are due.")
+            return
+        for schedule in schedules:
+            profile = profiles.get(schedule.profile) if schedule.profile else None
+            request = ReminderRequest(
+                message=schedule.message,
+                spice=schedule.spice,
+                seed=None,
+                intent=schedule.intent,
+                profile=profile.name if profile else None,
+                channel=schedule.channel,
+            )
+            reminder = generate_reminder(request, profile)
+            subject = f"Reminder: {schedule.message}"
+            output = format_for_channel(schedule.channel, reminder, subject=subject)
+            print(f"\nScheduled reminder #{schedule.id}:")
+            print(output)
+            if not args.dry_run:
+                mark_schedule_sent(schedule.id, data_path)
+                append_history(
+                    ReminderEvent(
+                        timestamp=now,
+                        message=schedule.message,
+                        spice=schedule.spice,
+                        intent=schedule.intent,
+                        channel=schedule.channel,
+                        profile=profile.name if profile else None,
+                    ),
+                    data_path,
+                )
+        if args.dry_run:
+            print("\nDry run complete — no reminders were marked as sent.")
+
+
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
 
     if args.command == "profile":
         handle_profile_commands(args)
+        return
+
+    if args.command == "schedule":
+        handle_schedule_commands(args)
+        return
+
+    if args.command == "history":
+        events = list_history(args.data, limit=args.limit)
+        if not events:
+            print("No reminder history yet.")
+            return
+        for event in events:
+            profile_label = f" ({event.profile})" if event.profile else ""
+            print(
+                f"{event.timestamp.isoformat(timespec='minutes')} | "
+                f"{event.intent} | {event.message}{profile_label}"
+            )
         return
 
     data_path = args.data
