@@ -1,6 +1,22 @@
-"""Reminder templates, sass levels, and supported channels."""
+"""Reminder templates, sass levels, and supported channels.
 
-TAILS = {
+This module contains all the message templates and sass levels used to generate
+reminder messages. The templates support different "intents" (nudge, follow_up,
+deadline, check_in) and different sass levels (1-5).
+
+- Level 1: Gentle and polite
+- Level 2: Casual and friendly
+- Level 3: Slightly sarcastic
+- Level 4: More sarcastic
+- Level 5: Maximum sass and passive-aggression
+
+TAILS are closing phrases that vary by sass level, and INTENT_TEMPLATES are
+the base message structures that can be combined with different intents.
+"""
+
+from __future__ import annotations
+
+TAILS: dict[int, list[str]] = {
     1: [
         "Just a gentle nudge!",
         "Thanks in advance!",
@@ -28,7 +44,7 @@ TAILS = {
     ],
 }
 
-INTENT_TEMPLATES = {
+INTENT_TEMPLATES: dict[str, list[str]] = {
     "nudge": [
         "Just a gentle reminder to {message}.",
         "Quick reminder to {message}.",
@@ -51,4 +67,4 @@ INTENT_TEMPLATES = {
     ],
 }
 
-CHANNELS = ("plain", "slack", "discord", "email")
+CHANNELS: tuple[str, ...] = ("plain", "slack", "discord", "email")
