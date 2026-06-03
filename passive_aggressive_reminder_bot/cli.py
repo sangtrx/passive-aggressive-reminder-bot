@@ -23,6 +23,7 @@ from .constants import (
     MSG_REMINDER_SCHEDULED,
     TAILS,
 )
+from . import __version__
 from .core import generate_reminder
 from .models import Profile, ReminderEvent, ReminderRequest, ScheduledReminder
 from .storage import (
@@ -61,6 +62,7 @@ def _add_data_argument(parser: argparse.ArgumentParser) -> None:
 
 def build_parser() -> tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
     parser = argparse.ArgumentParser(description="Generate a reminder with adjustable sass.")
+    parser.add_argument("--version", action="version", version=f"passive-aggressive-reminder-bot {__version__}")
     subparsers = parser.add_subparsers(dest="command")
 
     remind_parser = subparsers.add_parser("remind", help="Generate a reminder")
