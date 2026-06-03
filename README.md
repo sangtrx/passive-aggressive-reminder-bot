@@ -242,3 +242,4 @@ Contributions welcome! Submit pull requests or open issues for bugs and feature 
 - Scheduling support
 - JSON and SQLite storage
 
+- Upgrade note 56: small quality improvement.
