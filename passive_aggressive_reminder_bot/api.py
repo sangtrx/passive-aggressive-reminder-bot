@@ -49,8 +49,11 @@ def create_app(redis_url: str | None = None) -> Any:
 
     @app.on_event("startup")
     async def _startup():
-        # initialize optional cache (reads redis_url provided to factory)
-        app.state.cache = await make_cache(redis_url)
+        # initialize optional cache (reads redis_url provided to factory or REDIS_URL env)
+        import os
+
+        cfg_redis = redis_url or os.environ.get("REDIS_URL")
+        app.state.cache = await make_cache(cfg_redis)
 
 
     @app.post("/remind", response_class=ORJSONResponse)
