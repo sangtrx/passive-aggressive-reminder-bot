@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from datetime import datetime
+from typing import Any
 from pathlib import Path
 
 from .models import Profile, ReminderEvent, ScheduledReminder
@@ -67,7 +68,7 @@ def _init_db(connection: sqlite3.Connection) -> None:
     connection.commit()
 
 
-def load_store(path: Path = DEFAULT_DATA_PATH) -> dict:
+def load_store(path: Path = DEFAULT_DATA_PATH) -> dict[str, Any]:
     if not path.exists():
         return dict(DEFAULT_STORE)
     try:
@@ -86,7 +87,11 @@ def load_store(path: Path = DEFAULT_DATA_PATH) -> dict:
 
 
 def save_store(store: dict, path: Path = DEFAULT_DATA_PATH) -> None:
-    path.write_text(json.dumps(store, indent=2), encoding="utf-8")
+    """Serialize and save the JSON store to disk using UTF-8 encoding.
+
+    Uses ensure_ascii=False to better preserve Unicode in the file.
+    """
+    path.write_text(json.dumps(store, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 def load_profiles(path: Path = DEFAULT_DATA_PATH) -> dict[str, Profile]:
