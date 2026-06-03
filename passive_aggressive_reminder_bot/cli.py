@@ -65,6 +65,10 @@ def build_parser() -> tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
     parser.add_argument("--version", action="version", version=f"passive-aggressive-reminder-bot {__version__}")
     subparsers = parser.add_subparsers(dest="command")
 
+    export_parser = subparsers.add_parser("export", help="Export schedules to a JSON file")
+    export_parser.add_argument("--output", "-o", help="Output JSON file", default="schedules_export.json")
+    _add_data_argument(export_parser)
+
     remind_parser = subparsers.add_parser("remind", help="Generate a reminder")
     remind_parser.add_argument("message", help="What the reminder is about")
     remind_parser.add_argument(
@@ -297,6 +301,18 @@ def handle_schedule_commands(args: argparse.Namespace) -> None:
                 )
         if args.dry_run:
             print(f"\n{MSG_DRY_RUN_COMPLETE}")
+
+
+def handle_export(args: argparse.Namespace) -> None:
+    data_path = args.data
+    from .storage import list_schedules
+    import json
+
+    schedules = list_schedules(data_path)
+    output = args.output
+    with open(output, "w", encoding="utf-8") as fh:
+        json.dump([s.to_dict() for s in schedules], fh, indent=2, ensure_ascii=False)
+    print(f"Exported {len(schedules)} schedules to {output}")
 
 
 def main(argv: list[str] | None = None) -> None:
