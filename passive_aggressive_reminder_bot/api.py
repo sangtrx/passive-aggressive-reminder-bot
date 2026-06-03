@@ -9,10 +9,10 @@ from __future__ import annotations
 from typing import Any
 
 
-def create_app() -> Any:
+def create_app(redis_url: str | None = None) -> Any:
     try:
         from fastapi import FastAPI, HTTPException
-        from fastapi.responses import ORJSONResponse, PlainTextResponse
+        from fastapi.responses import ORJSONResponse, PlainTextResponse, Response
         from fastapi.concurrency import run_in_threadpool
     except Exception as exc:  # pragma: no cover - optional dependency
         raise RuntimeError("FastAPI is not installed; install requirements-enterprise.txt") from exc
@@ -29,11 +29,14 @@ def create_app() -> Any:
 
     from .core import generate_reminder
     from .cache import make_cache
+    import time
 
     app = FastAPI(title="Passive-Aggressive Reminder Bot API")
 
     REQUEST_COUNT = Counter("parb_requests_total", "Total requests") if Counter else None
     REQUEST_LATENCY = Histogram("parb_request_latency_seconds", "Request latency") if Histogram else None
+    CACHE_HIT = Counter("parb_cache_hits_total", "Cache hits") if Counter else None
+    CACHE_MISS = Counter("parb_cache_misses_total", "Cache misses") if Counter else None
 
 
     class RemindRequest(BaseModel):
@@ -46,8 +49,8 @@ def create_app() -> Any:
 
     @app.on_event("startup")
     async def _startup():
-        # initialize optional cache
-        app.state.cache = await make_cache(None)
+        # initialize optional cache (reads redis_url provided to factory)
+        app.state.cache = await make_cache(redis_url)
 
 
     @app.post("/remind", response_class=ORJSONResponse)
@@ -74,17 +77,22 @@ def create_app() -> Any:
             key = f"reminder:{req.intent}:{req.spice or 2}:{req.message}:{req.profile}"
             cached = await app.state.cache.get(key)
             if cached:
+                if CACHE_HIT:
+                    CACHE_HIT.inc()
                 reminder = cached
             else:
+                if CACHE_MISS:
+                    CACHE_MISS.inc()
                 reminder = await run_in_threadpool(generate_reminder, r)
-                await app.state.cache.set(key, reminder, ttl=60)
+                # ensure we store a string
+                await app.state.cache.set(key, str(reminder), ttl=60)
 
             return {"reminder": reminder}
         except Exception as exc:
             raise HTTPException(status_code=400, detail=str(exc))
         finally:
             if REQUEST_LATENCY and start:
-                start.observe()
+                REQUEST_LATENCY.observe(time.perf_counter() - start)
 
 
     @app.get("/health", response_class=PlainTextResponse)
@@ -105,6 +113,7 @@ def create_app() -> Any:
     if generate_latest:
         @app.get("/metrics")
         def _metrics():
-            return ORJSONResponse(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+            # generate_latest returns bytes
+            return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
     return app
