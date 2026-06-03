@@ -102,7 +102,6 @@ class ReminderEvent:
 
     def to_dict(self) -> dict:
         """Convert ReminderEvent to a dictionary for serialization."""
-        """Convert ReminderEvent to a dictionary for serialization."""
         return {
             "timestamp": self.timestamp.isoformat(timespec="seconds"),
             "message": self.message,
