@@ -25,6 +25,9 @@ from .constants import (
 )
 from . import __version__
 from .core import generate_reminder
+from .cache import make_cache
+import asyncio
+import os
 from .models import Profile, ReminderEvent, ReminderRequest, ScheduledReminder
 from .storage import (
     DEFAULT_DATA_PATH,
@@ -219,6 +222,11 @@ def handle_profile_commands(args: argparse.Namespace) -> None:
 def handle_schedule_commands(args: argparse.Namespace) -> None:
     data_path = args.data
     profiles = load_profiles(data_path)
+    # initialize a simple cache for CLI commands (uses REDIS_URL if set)
+    try:
+        cache = asyncio.run(make_cache(os.environ.get("REDIS_URL")))
+    except Exception:
+        cache = None
 
     if args.schedule_command == "add":
         profile = profiles.get(args.profile) if args.profile else None
@@ -355,7 +363,21 @@ def main(argv: list[str] | None = None) -> None:
         profile=profile.name if profile else None,
         channel=args.channel,
     )
-    reminder = generate_reminder(request, profile)
+    # consult cache for a previously-generated reminder
+    reminder = None
+    if cache is not None:
+        try:
+            key = f"reminder:{request.intent}:{request.spice}:{request.message}:{request.profile}"
+            reminder = asyncio.run(cache.get(key))
+        except Exception:
+            reminder = None
+    if reminder is None:
+        reminder = generate_reminder(request, profile)
+        if cache is not None:
+            try:
+                asyncio.run(cache.set(key, str(reminder), ttl=60))
+            except Exception:
+                pass
     subject = f"Reminder: {args.message}"
     output = format_for_channel(args.channel, reminder, subject=subject)
     print(output)
