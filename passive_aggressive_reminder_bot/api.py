@@ -1,3 +1,51 @@
+"""ASGI API for Passive-Aggressive Reminder Bot using FastAPI.
+
+Lightweight app that exposes a /remind endpoint which accepts JSON payloads
+and returns a generated reminder. Uses ORJSON for fast serialization when
+available.
+"""
+from __future__ import annotations
+
+try:
+    from fastapi import FastAPI, HTTPException
+    from fastapi.responses import ORJSONResponse
+except Exception:  # pragma: no cover - runtime absence handled in enterprise deps
+    raise
+
+from pydantic import BaseModel
+
+from .core import generate_reminder
+
+
+class RemindRequest(BaseModel):
+    message: str
+    spice: int | None = None
+    seed: int | None = None
+    intent: str = "nudge"
+    profile: str | None = None
+
+
+app = FastAPI(title="Passive-Aggressive Reminder Bot API")
+
+
+@app.post("/remind", response_class=ORJSONResponse)
+async def remind(req: RemindRequest):
+    try:
+        # Build a simple request-like object for existing core.generate_reminder
+        class R:
+            pass
+
+        r = R()
+        r.message = req.message
+        r.spice = req.spice or 2
+        r.seed = req.seed
+        r.intent = req.intent
+        r.profile = req.profile
+
+        reminder = generate_reminder(r)
+        return {"reminder": reminder}
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 """Lightweight FastAPI integration for enterprise deployments.
 
 This module exposes a factory `create_app()` which builds a FastAPI app.
