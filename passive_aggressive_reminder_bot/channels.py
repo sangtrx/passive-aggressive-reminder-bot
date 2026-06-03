@@ -1,8 +1,16 @@
-"""Channel-specific formatting for reminder output."""
+"""Channel-specific formatting for reminder output.
+
+This module centralizes how reminders are presented for different output
+channels. The default subject line used for email formatting is defined as
+`FRIENDLY_SUBJECT` so it can be adjusted in a single place.
+"""
 
 from __future__ import annotations
 
 from .constants import Channel
+
+
+FRIENDLY_SUBJECT = "Friendly reminder"
 
 
 def format_for_channel(channel: str | Channel, reminder: str, subject: str | None = None) -> str:
@@ -24,6 +32,6 @@ def format_for_channel(channel: str | Channel, reminder: str, subject: str | Non
     if normalized == Channel.DISCORD.value:
         return f"🔔 {reminder}"
     if normalized == Channel.EMAIL.value:
-        subject_line = subject or "Friendly reminder"
+        subject_line = subject or FRIENDLY_SUBJECT
         return f"Subject: {subject_line}\n\n{reminder}"
     return reminder
