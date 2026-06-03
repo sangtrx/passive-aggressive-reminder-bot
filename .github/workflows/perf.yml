@@ -34,4 +34,4 @@ jobs:
         with:
           name: bench-output
           path: |
-            scripts/async_benchmark_httpx.py
+            bench_result.txt
