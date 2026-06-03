@@ -1,3 +1,22 @@
+PY=python3
+
+.PHONY: venv install start stop bench
+
+venv:
+ 	$(PY) -m venv .venv
+
+install: venv
+ 	. .venv/bin/activate && python -m pip install --upgrade pip && python -m pip install -r requirements-enterprise.txt
+
+start:
+ 	docker compose up -d --build
+
+stop:
+ 	docker compose down
+
+bench:
+ 	# run the async http benchmark against local API
+ 	$(PY) scripts/async_benchmark_httpx.py
 .PHONY: help install install-dev test test-cov lint format type-check clean run
 
 help:
