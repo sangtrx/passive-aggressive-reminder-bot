@@ -1,3 +1,31 @@
+"""Centralized logging configuration for enterprise deployments."""
+from __future__ import annotations
+
+import logging
+from logging.config import dictConfig
+
+
+DEFAULT_LOG_CONFIG = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "default": {"format": "%(asctime)s %(levelname)s [%(name)s] %(message)s"}
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "default"}
+    },
+    "root": {"level": "INFO", "handlers": ["console"]},
+}
+
+
+def configure_logging(config: dict | None = None) -> None:
+    """Apply logging configuration. If no config is provided, the default is used."""
+    dictConfig(config or DEFAULT_LOG_CONFIG)
+
+
+def get_logger(name: str) -> logging.Logger:
+    configure_logging()
+    return logging.getLogger(name)
 """Logging configuration for the reminder bot."""
 
 import logging
