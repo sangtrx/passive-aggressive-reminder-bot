@@ -119,4 +119,16 @@ def create_app(redis_url: str | None = None) -> Any:
             # generate_latest returns bytes
             return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
+    @app.get("/debug/cache")
+    async def _cache_debug(key: str):
+        """Simple cache debug endpoint — returns hit status and value (if any).
+
+        Not suitable for production secrets; intended for debugging integrations.
+        """
+        try:
+            val = await app.state.cache.get(key)
+            return {"key": key, "hit": val is not None, "value": val}
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=str(exc))
+
     return app
