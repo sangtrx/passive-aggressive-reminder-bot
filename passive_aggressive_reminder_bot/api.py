@@ -99,8 +99,23 @@ def create_app(redis_url: str | None = None) -> Any:
 
 
     @app.get("/health", response_class=PlainTextResponse)
-    def _health() -> str:  # pragma: no cover - small endpoint
-        return "ok"
+    async def _health() -> str:  # pragma: no cover - small endpoint
+        # check optional Redis availability and cache size
+        cache = getattr(app.state, "cache", None)
+        if cache is None:
+            return "ok"
+        try:
+            # Redis-backed cache exposes stats(); in-memory will fall back
+            stats = None
+            if hasattr(cache, "stats"):
+                stats = await cache.stats()
+            elif hasattr(cache, "index"):
+                stats = {"keys": len(getattr(cache, "index", []))}
+            else:
+                stats = {"keys": 0}
+            return f"ok keys={stats.get('keys',0)}"
+        except Exception:
+            return "degraded"
 
 
     @app.get("/version", response_class=PlainTextResponse)
@@ -127,7 +142,14 @@ def create_app(redis_url: str | None = None) -> Any:
         """
         try:
             val = await app.state.cache.get(key)
-            return {"key": key, "hit": val is not None, "value": val}
+            stats = None
+            if hasattr(app.state.cache, "stats"):
+                stats = await app.state.cache.stats()
+            elif hasattr(app.state.cache, "index"):
+                stats = {"keys": len(getattr(app.state.cache, "index", []))}
+            else:
+                stats = {"keys": 0}
+            return {"key": key, "hit": val is not None, "value": val, "stats": stats}
         except Exception as exc:
             raise HTTPException(status_code=500, detail=str(exc))
 
