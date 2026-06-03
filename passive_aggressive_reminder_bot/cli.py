@@ -222,6 +222,18 @@ def handle_profile_commands(args: argparse.Namespace) -> None:
 def handle_schedule_commands(args: argparse.Namespace) -> None:
     data_path = args.data
     profiles = load_profiles(data_path)
+    import os
+    # small Prometheus instrumentation for schedule sends
+    try:
+        from .metrics import make_counter, make_histogram
+
+        SCHEDULES_SENT = make_counter("parb_schedules_sent_total", "Scheduled reminders sent")
+        SCHEDULE_GENERATE_LATENCY = make_histogram(
+            "parb_schedule_generate_latency_seconds", "Latency generating scheduled reminder"
+        )
+    except Exception:
+        SCHEDULES_SENT = None
+        SCHEDULE_GENERATE_LATENCY = None
     # initialize a simple cache for CLI commands (uses REDIS_URL if set)
     try:
         cache = asyncio.run(make_cache(os.environ.get("REDIS_URL")))
@@ -280,6 +292,12 @@ def handle_schedule_commands(args: argparse.Namespace) -> None:
         if not schedules:
             print(MSG_NO_REMINDERS_DUE)
             return
+        # optional cache (REDIS_URL) to avoid re-generating identical reminders
+        try:
+            cache = asyncio.run(make_cache(os.environ.get("REDIS_URL")))
+        except Exception:
+            cache = None
+
         for schedule in schedules:
             profile = profiles.get(schedule.profile) if schedule.profile else None
             request = ReminderRequest(
@@ -290,7 +308,32 @@ def handle_schedule_commands(args: argparse.Namespace) -> None:
                 profile=profile.name if profile else None,
                 channel=schedule.channel,
             )
-            reminder = generate_reminder(request, profile)
+            # try cache first
+            key = f"reminder:{request.intent}:{request.spice}:{request.message}:{request.profile}"
+            reminder = None
+            try:
+                if cache is not None:
+                    reminder = asyncio.run(cache.get(key))
+            except Exception:
+                reminder = None
+            if reminder is None:
+                import time
+
+                start = time.perf_counter()
+                reminder = generate_reminder(request, profile)
+                if SCHEDULE_GENERATE_LATENCY:
+                    SCHEDULE_GENERATE_LATENCY.observe(time.perf_counter() - start)
+                if cache is not None:
+                    try:
+                        asyncio.run(cache.set(key, str(reminder), ttl=60))
+                    except Exception:
+                        pass
+            else:
+                # hit
+                pass
+
+            if SCHEDULES_SENT:
+                SCHEDULES_SENT.inc()
             subject = f"Reminder: {schedule.message}"
             output = format_for_channel(schedule.channel, reminder, subject=subject)
             print(f"\nScheduled reminder #{schedule.id}:")
