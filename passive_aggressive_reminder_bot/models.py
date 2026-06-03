@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any, Dict
 
 
 @dataclass(frozen=True)
@@ -35,7 +36,7 @@ class Profile:
             default_spice=int(data.get("default_spice", 2)),
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "display_name": self.display_name,
             "pronouns": self.pronouns,
@@ -100,7 +101,7 @@ class ReminderEvent:
             profile=data.get("profile"),
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert ReminderEvent to a dictionary for serialization."""
         return {
             "timestamp": self.timestamp.isoformat(timespec="seconds"),
