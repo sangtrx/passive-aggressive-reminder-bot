@@ -58,3 +58,7 @@ clean:
 
 run:
 	python3 -m passive_aggressive_reminder_bot remind "example reminder" --spice 3
+
+docker-build:
+	docker build -t passive-aggressive-reminder-bot:local .
+
