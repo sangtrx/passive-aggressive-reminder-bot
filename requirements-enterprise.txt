@@ -1,4 +1,4 @@
-fastapi>=0.95.0
-uvicorn[standard]>=0.23.0
-sqlalchemy>=1.4
-prometheus-client>=0.16.0
+fastapi>=0.95
+uvicorn>=0.22
+sqlalchemy>=2.0
+alembic>=1.10
