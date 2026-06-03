@@ -63,6 +63,7 @@ def _add_data_argument(parser: argparse.ArgumentParser) -> None:
 def build_parser() -> tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
     parser = argparse.ArgumentParser(description="Generate a reminder with adjustable sass.")
     parser.add_argument("--version", action="version", version=f"passive-aggressive-reminder-bot {__version__}")
+    parser.add_argument("--enterprise-key", help="Enterprise API key for admin operations", default=None)
     subparsers = parser.add_subparsers(dest="command")
 
     export_parser = subparsers.add_parser("export", help="Export schedules to a JSON file")
