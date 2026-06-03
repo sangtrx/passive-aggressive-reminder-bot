@@ -27,3 +27,7 @@ jobs:
       - name: Run tests
         run: |
           python -m pytest -q || true
+      - name: Build Docker image (optional)
+        if: github.event_name == 'push'
+        run: |
+          docker build -t passive-aggressive-reminder-bot:ci . || true
