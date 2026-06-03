@@ -1,0 +1,13 @@
+[Unit]
+Description=Passive-Aggressive Reminder Bot
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/passive-aggressive-reminder-bot
+ExecStart=/usr/bin/python3 -m passive_aggressive_reminder_bot.cli
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
