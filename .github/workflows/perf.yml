@@ -1,0 +1,37 @@
+name: Perf Benchmark
+
+on:
+  workflow_dispatch:
+
+jobs:
+  perf:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-enterprise.txt
+      - name: Start API
+        run: |
+          export REDIS_URL=redis://localhost:6379/0
+          nohup uvicorn "passive_aggressive_reminder_bot.api:create_app()" --factory --host 127.0.0.1 --port 8000 &
+          sleep 2
+      - name: Run async HTTP benchmark
+        run: |
+          python scripts/async_benchmark_httpx.py
+      - name: Archive results
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-output
+          path: |
+            scripts/async_benchmark_httpx.py
