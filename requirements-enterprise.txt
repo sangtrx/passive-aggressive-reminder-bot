@@ -2,3 +2,5 @@ fastapi>=0.95
 uvicorn>=0.22
 sqlalchemy>=2.0
 alembic>=1.10
+orjson>=3.9.0
+httpx>=0.24.0
