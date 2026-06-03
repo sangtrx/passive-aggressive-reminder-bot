@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict
 
+JSONDict = Dict[str, Any]
+
 
 @dataclass(frozen=True)
 class Profile:
@@ -101,7 +103,7 @@ class ReminderEvent:
             profile=data.get("profile"),
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> JSONDict:
         """Convert ReminderEvent to a dictionary for serialization."""
         return {
             "timestamp": self.timestamp.isoformat(timespec="seconds"),
@@ -159,7 +161,7 @@ class ScheduledReminder:
             status=str(data.get("status", "pending")),
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> JSONDict:
         return {
             "id": self.id,
             "message": self.message,
