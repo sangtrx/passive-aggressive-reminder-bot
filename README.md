@@ -32,6 +32,25 @@ pip install -r requirements-enterprise.txt
 uvicorn passive_aggressive_reminder_bot.api:app --reload
 ```
 
+Using Redis for caching
+-----------------------
+
+The API and CLI can optionally use Redis for caching generated reminders. Set
+`REDIS_URL` to point at your Redis instance (example below uses a local Redis):
+
+```bash
+export REDIS_URL=redis://localhost:6379/0
+uvicorn "passive_aggressive_reminder_bot.api:create_app()" --factory --reload
+```
+
+The API exposes a small debug endpoint to inspect cache entries during
+development:
+
+```
+GET /debug/cache?key=reminder:nudge:2:benchmark:None
+```
+
+
 Benchmark
 ---------
 
@@ -39,6 +58,14 @@ Run the micro-benchmark to measure generate_reminder throughput:
 
 ```bash
 python scripts/benchmark_generate.py
+```
+
+Or run the async HTTP benchmark against a running API (requires `httpx`):
+
+```bash
+# start API (see Redis example above if desired)
+uvicorn "passive_aggressive_reminder_bot.api:create_app()" --factory --host 127.0.0.1 --port 8000 &
+python scripts/async_benchmark_httpx.py
 ```
 
 ### Development Setup
