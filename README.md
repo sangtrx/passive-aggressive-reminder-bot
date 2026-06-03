@@ -244,3 +244,4 @@ Contributions welcome! Submit pull requests or open issues for bugs and feature 
 
 - Upgrade note 56: small quality improvement.
 - Upgrade note 57: small quality improvement.
+- Upgrade note 58: small quality improvement.
