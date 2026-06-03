@@ -6,10 +6,24 @@ import logging
 import random
 
 from .data import INTENT_TEMPLATES, TAILS
+from functools import lru_cache
 from .models import Profile, ReminderRequest
 from .validation import validate_message, validate_spice
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=256)
+def _render_template(intent: str, message: str, spice: int, seed: int | None, profile_name: str | None, signoff: str | None) -> str:
+    rng = random.Random(seed)
+    templates = INTENT_TEMPLATES.get(intent, INTENT_TEMPLATES["nudge"])
+    base = rng.choice(templates).format(message=message)
+    tail = rng.choice(TAILS[spice])
+    greeting = f"Hey {profile_name}," if profile_name else ""
+    parts = [part for part in (greeting, base, tail) if part]
+    if signoff:
+        parts.append(f"— {signoff}")
+    return " ".join(parts)
 
 
 def generate_reminder(request: ReminderRequest, profile: Profile | None = None) -> str:
@@ -32,17 +46,9 @@ def generate_reminder(request: ReminderRequest, profile: Profile | None = None) 
     validate_message(request.message)
     spice = validate_spice(request.spice)
     
-    rng = random.Random(request.seed)
-    templates = INTENT_TEMPLATES.get(request.intent, INTENT_TEMPLATES["nudge"])
-    base = rng.choice(templates).format(message=request.message)
-    tail = rng.choice(TAILS[spice])
-    greeting = f"Hey {profile.display_name}," if profile else ""
-    signoff = profile.signoff if profile else ""
-    parts = [part for part in (greeting, base, tail) if part]
-    if signoff:
-        parts.append(f"— {signoff}")
-    
-    message = " ".join(parts)
+    profile_name = profile.display_name if profile else None
+    signoff = profile.signoff if profile else None
+    message = _render_template(request.intent, request.message, spice, request.seed or 0, profile_name, signoff)
     logger.debug(
         f"Generated reminder: intent={request.intent}, spice={spice}, "
         f"profile={profile.name if profile else 'none'}"
