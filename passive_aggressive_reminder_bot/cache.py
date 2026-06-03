@@ -29,6 +29,21 @@ class SimpleInMemoryCache:
         expire = time.time() + ttl if ttl else 0
         self.store[key] = (expire, value)
 
+    async def delete(self, key: str) -> int:
+        if key in self.store:
+            del self.store[key]
+            return 1
+        return 0
+
+    async def delete_pattern(self, pattern: str) -> int:
+        # simple glob-like pattern using fnmatch
+        import fnmatch
+
+        keys = [k for k in list(self.store.keys()) if fnmatch.fnmatch(k, pattern)]
+        for k in keys:
+            del self.store[k]
+        return len(keys)
+
 
 class RedisCache:
     def __init__(self, client):
@@ -52,6 +67,21 @@ class RedisCache:
             await self._client.set(key, value, ex=ttl)
         else:
             await self._client.set(key, value)
+
+    async def delete(self, key: str) -> int:
+        res = await self._client.delete(key)
+        try:
+            return int(res)
+        except Exception:
+            return 0
+
+    async def delete_pattern(self, pattern: str) -> int:
+        # use KEYS for convenience in dev - not recommended for production
+        keys = await self._client.keys(pattern)
+        if not keys:
+            return 0
+        await self._client.delete(*keys)
+        return len(keys)
 
 
 async def make_cache(redis_url: str | None = None):

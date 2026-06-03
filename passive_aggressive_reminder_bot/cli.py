@@ -185,7 +185,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def handle_profile_commands(args: argparse.Namespace) -> None:
+    import os
+
     data_path = args.data
+    # optional cache for invalidation
+    try:
+        cache = asyncio.run(make_cache(os.environ.get("REDIS_URL")))
+    except Exception:
+        cache = None
     if args.profile_command == "list":
         profiles = load_profiles(data_path)
         if not profiles:
@@ -208,12 +215,26 @@ def handle_profile_commands(args: argparse.Namespace) -> None:
             default_spice=args.default_spice,
         )
         upsert_profile(profile, data_path)
+        # invalidate any cached reminders for this profile
+        if cache is not None:
+            try:
+                pattern = f"reminder:*:*:*:{profile.name}"
+                asyncio.run(cache.delete_pattern(pattern))
+            except Exception:
+                pass
         print(MSG_PROFILE_SAVED.format(profile.name))
         return
 
     if args.profile_command == "remove":
         removed = delete_profile(args.name, data_path)
         if removed:
+            # invalidate cache entries for removed profile
+            if cache is not None:
+                try:
+                    pattern = f"reminder:*:*:*:{args.name}"
+                    asyncio.run(cache.delete_pattern(pattern))
+                except Exception:
+                    pass
             print(MSG_PROFILE_REMOVED.format(args.name))
         else:
             print(MSG_PROFILE_NOT_FOUND.format(args.name))

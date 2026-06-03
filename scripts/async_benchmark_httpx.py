@@ -31,6 +31,12 @@ async def run(total: int = 1000, concurrency: int = 50):
             await q.put(None)
         await asyncio.gather(*workers)
     print(f"{total} requests in {elapsed:.2f}s -> {total/elapsed:.0f} req/s")
+    # write result to file for CI artifact collection
+    try:
+        with open("bench_result.txt", "w", encoding="utf-8") as fh:
+            fh.write(f"{total} requests in {elapsed:.2f}s -> {total/elapsed:.0f} req/s\n")
+    except Exception:
+        pass
 
 
 if __name__ == '__main__':
