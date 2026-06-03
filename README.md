@@ -22,6 +22,25 @@ cd passive-aggressive-reminder-bot
 python main.py --help
 ```
 
+API
+---
+
+An ASGI API is available for enterprise deployments. Run locally:
+
+```bash
+pip install -r requirements-enterprise.txt
+uvicorn passive_aggressive_reminder_bot.api:app --reload
+```
+
+Benchmark
+---------
+
+Run the micro-benchmark to measure generate_reminder throughput:
+
+```bash
+python scripts/benchmark_generate.py
+```
+
 ### Development Setup
 
 Install development dependencies:
