@@ -44,7 +44,9 @@ def parse_datetime(value: str) -> datetime:
     try:
         return datetime.fromisoformat(value)
     except ValueError as exc:
-        raise argparse.ArgumentTypeError("Datetime must be ISO format") from exc
+        raise argparse.ArgumentTypeError(
+            "Datetime must be ISO format (e.g. 2026-06-03T09:00)"
+        ) from exc
 
 
 def _add_data_argument(parser: argparse.ArgumentParser) -> None:
