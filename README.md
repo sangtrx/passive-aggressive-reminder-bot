@@ -28,6 +28,8 @@ Install development dependencies:
 
 ```bash
 pip install -r requirements-dev.txt
+# Optional enterprise deps (FastAPI, SQLAlchemy, Prometheus):
+pip install -r requirements-enterprise.txt
 ```
 
 Run tests:
