@@ -1,56 +1,8 @@
-"""ASGI API for Passive-Aggressive Reminder Bot using FastAPI.
-
-Lightweight app that exposes a /remind endpoint which accepts JSON payloads
-and returns a generated reminder. Uses ORJSON for fast serialization when
-available.
-"""
-from __future__ import annotations
-
-try:
-    from fastapi import FastAPI, HTTPException
-    from fastapi.responses import ORJSONResponse
-except Exception:  # pragma: no cover - runtime absence handled in enterprise deps
-    raise
-
-from pydantic import BaseModel
-
-from .core import generate_reminder
-
-
-class RemindRequest(BaseModel):
-    message: str
-    spice: int | None = None
-    seed: int | None = None
-    intent: str = "nudge"
-    profile: str | None = None
-
-
-app = FastAPI(title="Passive-Aggressive Reminder Bot API")
-
-
-@app.post("/remind", response_class=ORJSONResponse)
-async def remind(req: RemindRequest):
-    try:
-        # Build a simple request-like object for existing core.generate_reminder
-        class R:
-            pass
-
-        r = R()
-        r.message = req.message
-        r.spice = req.spice or 2
-        r.seed = req.seed
-        r.intent = req.intent
-        r.profile = req.profile
-
-        reminder = generate_reminder(r)
-        return {"reminder": reminder}
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
 """Lightweight FastAPI integration for enterprise deployments.
 
-This module exposes a factory `create_app()` which builds a FastAPI app.
-Importing this module does not require FastAPI to be installed; the import
-error is deferred until `create_app()` is called.
+This module exposes a factory `create_app()` which builds a FastAPI app with
+optional caching and Prometheus metrics. It defers importing FastAPI until
+runtime so the package can be used without the enterprise dependencies.
 """
 from __future__ import annotations
 
@@ -58,18 +10,81 @@ from typing import Any
 
 
 def create_app() -> Any:
-    """Create and return a FastAPI application instance.
-
-    This defers importing FastAPI until runtime so the package can be used
-    without installing the optional enterprise dependencies.
-    """
     try:
-        from fastapi import FastAPI
-        from fastapi.responses import PlainTextResponse
+        from fastapi import FastAPI, HTTPException
+        from fastapi.responses import ORJSONResponse, PlainTextResponse
+        from fastapi.concurrency import run_in_threadpool
     except Exception as exc:  # pragma: no cover - optional dependency
         raise RuntimeError("FastAPI is not installed; install requirements-enterprise.txt") from exc
 
+    # Optional deps
+    try:
+        from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+    except Exception:  # pragma: no cover - optional
+        Counter = Histogram = None
+        generate_latest = None
+        CONTENT_TYPE_LATEST = "text/plain; version=0.0.4"
+
+    from pydantic import BaseModel
+
+    from .core import generate_reminder
+    from .cache import make_cache
+
     app = FastAPI(title="Passive-Aggressive Reminder Bot API")
+
+    REQUEST_COUNT = Counter("parb_requests_total", "Total requests") if Counter else None
+    REQUEST_LATENCY = Histogram("parb_request_latency_seconds", "Request latency") if Histogram else None
+
+
+    class RemindRequest(BaseModel):
+        message: str
+        spice: int | None = None
+        seed: int | None = None
+        intent: str = "nudge"
+        profile: str | None = None
+
+
+    @app.on_event("startup")
+    async def _startup():
+        # initialize optional cache
+        app.state.cache = await make_cache(None)
+
+
+    @app.post("/remind", response_class=ORJSONResponse)
+    async def remind(req: RemindRequest):
+        if REQUEST_COUNT:
+            REQUEST_COUNT.inc()
+        start = None
+        if REQUEST_LATENCY:
+            start = REQUEST_LATENCY.time()
+
+        try:
+            # run CPU-bound generate_reminder in threadpool
+            class R:  # lightweight request-like object
+                pass
+
+            r = R()
+            r.message = req.message
+            r.spice = req.spice or 2
+            r.seed = req.seed
+            r.intent = req.intent
+            r.profile = req.profile
+
+            # cache key by message+spice+intent+profile
+            key = f"reminder:{req.intent}:{req.spice or 2}:{req.message}:{req.profile}"
+            cached = await app.state.cache.get(key)
+            if cached:
+                reminder = cached
+            else:
+                reminder = await run_in_threadpool(generate_reminder, r)
+                await app.state.cache.set(key, reminder, ttl=60)
+
+            return {"reminder": reminder}
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        finally:
+            if REQUEST_LATENCY and start:
+                start.observe()
 
 
     @app.get("/health", response_class=PlainTextResponse)
@@ -85,5 +100,11 @@ def create_app() -> Any:
             return __version__
         except Exception:
             return "unknown"
+
+
+    if generate_latest:
+        @app.get("/metrics")
+        def _metrics():
+            return ORJSONResponse(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
     return app
