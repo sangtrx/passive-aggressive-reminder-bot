@@ -11,7 +11,7 @@ Perfect for those who need their reminders served with a side of snark.
 - 💾 **Flexible Storage** — JSON (default) or SQLite backend
 - 🔧 **Multiple Formats** — Plain text, Slack, Discord, or email formatting
 - 🧪 **Well-Tested** — Comprehensive test suite (21+ tests)
-- 📝 **Type-Safe** — Full type hints throughout the codebase
+- 📝 **Type safe** — Full type hints throughout the codebase
 
 ## Installation
 
