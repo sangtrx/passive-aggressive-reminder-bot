@@ -255,3 +255,4 @@ Contributions welcome! Submit pull requests or open issues for bugs and feature 
 - Upgrade note 66: small quality improvement.
 - Upgrade note 67: small quality improvement.
 - Upgrade note 68: small quality improvement.
+- Upgrade note 69: small quality improvement.
