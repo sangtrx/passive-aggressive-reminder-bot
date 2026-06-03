@@ -243,3 +243,4 @@ Contributions welcome! Submit pull requests or open issues for bugs and feature 
 - JSON and SQLite storage
 
 - Upgrade note 56: small quality improvement.
+- Upgrade note 57: small quality improvement.
