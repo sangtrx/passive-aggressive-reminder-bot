@@ -251,3 +251,4 @@ Contributions welcome! Submit pull requests or open issues for bugs and feature 
 - Upgrade note 62: small quality improvement.
 - Upgrade note 63: small quality improvement.
 - Upgrade note 64: small quality improvement.
+- Upgrade note 65: small quality improvement.
